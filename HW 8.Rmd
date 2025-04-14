@@ -1,0 +1,161 @@
+---
+title: "Homework 8"
+author: "Melissa Yee"
+date: "2025-04-11"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+  pdf_document:
+    toc: true
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(mosaic)
+```
+
+Github Link: https://github.com/myee240/HW8 
+
+# **Problem 1: Regression warm up**
+
+```{r echo=FALSE, message=FALSE, results = 'hide'}
+creatinine <- read.csv("creatinine.csv")
+lm_creatinine <- lm(creatclear ~ age, data = creatinine)
+coef(lm_creatinine) %>% round(2)
+```
+Fitted equation: 147.81  + (-0.62)(55) = 113.71 mL/min 
+
+**Part A**: For a 55-year old, we would expect a creatinine clearance rate of 113.71 mL/min. This was found by plugging 5 into the regression equation: 147.81 - 0.62 * age 
+
+**Part B**: The slope β1 is -0.62, meaning the clearance decreases by 0.62 mL/min for each additional year of age. 
+
+**Part C**: 
+
+Age 40 Prediction: 147.81 - 0.62 * 40 = 123.01
+
+Age 40 Actual = 135 
+
+Age 40 Residual = 135 - 123.01 = +11.99 
+
+
+Age 60 Prediction: 147.81 - 0.62 * 60 = 110.61
+
+Age 60 Actual = 112 
+
+Age 60 Residual = 112 - 110.61 = +1.39
+
+The 40-year-old is healthier for their age, with a clearance rate 11.99 mL/min above expected, compare to only 1.39 mL/min above expected for the 60-year-old. I determined this by calculating the residuals and comparing each person's actual rate to the predicted rate from the regression model. 
+
+
+# **Problem 2: Modeling disease growth**
+
+```{r echo=FALSE, message=FALSE, results = 'hide'}
+covid <- read.csv("covid.csv")
+covid <- subset(covid, deaths > 0)
+
+italy <- subset(covid, country == "Italy")
+spain <- subset(covid, country == "Spain")
+
+lm_italy <- lm(log(deaths) ~ days_since_first_death, data=italy)
+boot_lm_italy = do(1000)*lm(log(deaths) ~ days_since_first_death, data=resample(italy))
+head(boot_lm_italy)
+
+boot_lm_spain <- do(1000)*lm(log(deaths) ~ days_since_first_death, data=resample(spain))
+lm_spain <- lm(log(deaths) ~ days_since_first_death, data=spain)
+boot_lm_spain = do(1000)*lm(log(deaths) ~ days_since_first_death, data=resample(spain))
+
+# Italy growth rate CI 
+italy_growth_rate_ci <- confint(boot_lm_italy, level=0.95)
+head(italy_growth_rate_ci)
+
+# Spain growth rate CI 
+spain_growth_rate_ci <- confint(boot_lm_spain, level=0.95)
+head(spain_growth_rate_ci)
+
+
+# Italy doubling time CI 
+doubling_italy <- 70 / (boot_lm_italy$days_since_first_death * 100)
+quantile(doubling_italy, c(0.025, 0.975))
+
+# Spain doubling time CI
+doubling_spain <- 70 / (boot_lm_spain$days_since_first_death * 100)
+quantile(doubling_spain, c(0.025, 0.975))
+
+```
+**Part A**: 
+
+An estimated growth rate for Italy: 0.183 
+
+Confidence Interval: (0.160, 0.208)
+
+
+An estimated doubling time for Italy: 3.8
+
+Confidence Interval: (3.4, 4.4) days
+
+
+I found the estimated death growth rate for Italy to be 0.183, or 18.3% and computed a 95% confidence interval of (0.160, 0.208). 
+Since the task was to fit an exponential growth model, I fitted our model using a logarithmic scale for the y variable. This linear model is fit for Italy using log-transformed death counts as the response variable and days since the first death as the predictor. Next, I performed 1000 bootstrap samples of the data to compute 95% confidence intervals for the growth rates. Then, I found the estimated doubling time for Italy to be 3.8 days and computed a 95% confidence interval of (3.4, 4.4). I calculated the doubling time of the daily death total Italy using the "Rule of 70" and additionally bootstrapped this estimate as well to create another 95% confidence interval. 
+
+**Part B**: 
+
+An estimated growth rate for Spain: 0.276
+
+Confidence Interval: (0.238, 0.320)
+
+
+An estimated doubling time for Spain: 2.5
+
+Confidence Interval: (2.2, 2.9) days
+
+
+Same procedure and analysis from Part B on Italy was performed on Spain. 
+
+**Part C**
+``` {r echo=FALSE, message=FALSE, results = 'hide', warning=FALSE}
+# Basic line plot
+ggplot(covid, aes(x = days_since_first_death, y = deaths, color = country)) +
+  geom_line(size = 1) +
+  labs(
+    title = "Daily Reported COVID-19 Deaths Over Time",
+    x = "Days Since First Reported Death",
+    y = "Number of Deaths",
+    color = "Country"
+  ) +
+  theme_minimal() 
+
+```
+
+
+This line graph shows reported daily deaths over time (using days_since_first_death) in Italy and Spain.
+
+# **Problem 3: Price elasticity of demand**
+
+``` {r echo=FALSE, message=FALSE, results = 'hide', include=FALSE}
+milk <- read.csv("milk.csv")
+
+ggplot(milk) +
+   geom_point(aes(x=price, y=sales))
+
+ggplot(milk) +
+   geom_point(aes(x=log(price), y=log(sales)))
+
+lm_milk = lm(log(sales) ~ log(price), data=milk)
+
+coef(lm_milk)
+
+confint(lm_milk)
+```
+
+My estimated elasticity is about -1.62. This means that when the price of milk increases by 1%, consumers want to buy about 1.62% less of it, on average.
+
+An estimated elasticity of demand: -1.62
+Confidence Interval: (-1.779, -1.458)
+
+A characteristic feature of a power law is that it looks linear when plotting log(y) versus log(x). When I fit a linear model for log(sales) vs log(price), I can estimate the intercept and log(price) slope of our fitted equation. Finally, I found the confidence interval for the price elasticity of demand at 95% confidence using bootstrapped samples of the linear model. 
